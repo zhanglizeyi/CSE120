@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<!-- saved from url=(0056)http://cseweb.ucsd.edu/classes/fa15/cse120-a/hw/hw2.html -->
+<html class="gr__cseweb_ucsd_edu"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+<link rel="stylesheet" type="text/css" href="./CSE 120 (Fall 2015) -- Homework #2_files/style.css">
+<title>CSE 120 (Fall 2015) -- Homework #2</title>
+</head>
+
+<body data-gr-c-s-loaded="true">
+<div class="labbody">
+
+<h1>CSE 120: Homework #2</h1>
+
+<h2 class="outline">Fall 2015</h2>
+
+<p><strong>Out</strong>: <span class="out">Thursday October 8</span><br>
+</p><p><strong>Due</strong>: <span class="due">Thursday October 22 at the start of class</span><br>
+
+
+</p><p> For the homework questions below, if you believe that
+you cannot answer a question without making some assumptions, state
+those assumptions in your answer.
+
+</p><ol>
+
+<p>
+</p><li> Consider the following C program:
+
+<blockquote><pre>#include &lt;stdlib.h&gt;
+
+int main (int argc, char *arg[])
+{
+    fork ();
+    if (fork ()) {
+	fork ();
+    } else {
+	char *argv[2] = {"/bin/ls", NULL};
+	execv (argv[0], argv);
+        fork ();
+    }
+}
+</pre></blockquote>
+
+<p> a. How many total processes are created (including the first process
+running the program)?  (Note that <tt>execv</tt> is just one of
+multiple ways of invoking <tt>exec</tt>.)
+
+</p><p> b. How many times does the <tt>/bin/ls</tt> program execute?
+
+</p><p> Hint: You can always add debugging code, compile it, and run the
+program to experiment with what happens.
+
+</p><p>
+</p></li><li> Assume we are using multiple user-level threads in a program
+(multiplexed on just one kernel-level thread).  If one thread in the
+program calls the system call fork() to create a child process, does
+the child process duplicate all the threads that were in the parent,
+or is the child process single-threaded?  If instead a thread invokes
+exec(), will the program specified in the parameter to exec() replace
+the entire process, including all of the threads?
+
+<!--
+<p>
+<li> What are the differences between user-level threads and
+kernel-level threads?  Under what circumstances is one type better
+than the other?
+-->
+
+<p>
+</p></li><li>The Intel x86 instruction set architecture provides an atomic
+instruction called XCHG for implementing synchronization primitives.
+(If you are
+curious, <a href="http://www.cs.miami.edu/home/burt/learning/Csc521.131/docs/iax-XCHG-vol2a.pdf">this
+reference page</a> shows the full syntax and semantics of the
+instruction.)  Semantically, XCHG works as follows (although keep in
+mind it is executed atomically):
+
+<blockquote><pre>void XCHG (bool *X, bool *Y) {
+  bool tmp = *X;
+  *X = *Y;
+  *Y = tmp;
+}
+</pre></blockquote>
+
+<p> Show how XCHG can be used instead of test-and-set to implement the
+acquire() and release() functions of the spinlock data structure described
+in the "Synchronization" lecture.
+
+</p><blockquote><pre>struct lock {
+  ...
+}
+
+void acquire (struct lock *) {
+  ...
+}
+
+void release (struct lock *) {
+  ...
+}
+</pre></blockquote>
+
+
+<p>
+</p></li><li> A common pattern in parallel scientific programs is to
+have a set of threads do a computation in a sequence of phases.
+In each phase <i>i</i>, all threads must finish phase <i>i</i>
+before any thread starts computing phase <i>i+1</i>.  One way
+to accomplish this is with barrier synchronization.  At the end
+of each phase, each thread executes <i>Barrier::Done(n)</i>, where
+<i>n</i> is the number of threads in the computation.  A call to
+<i>Barrier::Done</i> blocks until all of the <i>n</i> threads have
+called <i>Barrier::Done</i>.  Then, all threads proceed.  You may
+assume that the process allocates a new Barrier for each iteration,
+and that all threads of the program will call Done with the same
+value.
+
+<p> a. Write a monitor that implements Barrier using Mesa semantics.
+
+</p><blockquote><pre>monitor Barrier {
+  <i>...</i>
+}
+</pre></blockquote>
+
+<p> b. Implement Barrier using an explicit lock and condition
+variable.  The lock and condition variable have the semantics
+described at the end of the "Semaphore and Monitor" lecture in the
+ping_pong example, and as implemented by you in Project 1.
+
+</p><blockquote><pre>class Barrier {
+  <i>...private variables...</i>
+  void Done (int n) {
+    ...
+  }
+  ...
+}
+</pre></blockquote>
+
+<p>
+</p></li><li>
+
+Microsoft .NET provides a synchronization primitive called a
+CountdownEvent.  Programs use CountdownEvent to synchronize on the
+completion of many threads (similar to CountDownLatch in Java).  A
+CountdownEvent is initialized with a <i>count</i>, and a
+CountdownEvent can be in two states, <i>nonsignalled</i> and
+<i>signalled</i>.  Threads use a CountdownEvent in the nonsignalled
+state to <i>Wait</i> (block) until the internal count reaches zero.
+When the internal count of a CountdownEvent reaches zero, the
+CountdownEvent transitions to the signalled state and wakes up
+(unblocks) all waiting threads.  Once a CountdownEvent has
+transitioned from nonsignalled to signalled, the CountdownEvent
+remains in the signalled state.  In the nonsignalled state, at any
+time a thread may call the <i>Decrement</i> operation to decrease the
+count and <i>Increment</i> to increase the count.  In the signalled
+state, <i>Wait</i>, <i>Decrement</i>, and <i>Increment</i> have no
+effect and return immediately.
+
+<p>
+Use pseudo-code to implement a thread-safe CountdownEvent using locks
+and condition variables by implementing the following methods:
+
+</p><blockquote><pre>class CountdownEvent {
+  ...private variables...
+  CountdownEvent (int count) { ... }
+  void Increment () { ... }
+  void Decrement () { ... }
+  void Wait () { ... }
+}
+</pre></blockquote>
+
+<p>
+Notes:
+
+</p><ul>
+
+<li> The <i>CountdownEvent</i> constructor takes an integer
+  <i>count</i> as input and initializes the CountdownEvent counter
+  with <i>count</i>.  Positive values of <i>count</i> cause the
+  CountdownEvent to be constructed in the nonsignalled state.  Other
+  values of <i>count</i> will construct it in the signalled state.
+
+</li><li> <i>Increment</i> increments the internal counter.
+
+</li><li> <i>Decrement</i> decrements the internal counter.  If the counter
+  reaches zero, the CountdownEvent transitions to the signalled state
+  and unblocks any waiting threads.
+
+</li><li> <i>Wait</i> blocks the calling thread if the CountdownEvent is
+in the nonsignalled state, and otherwise returns.
+
+</li><li> Each of these methods is relatively short.
+
+</li></ul>
+
+
+<p> 
+</p></li><li> [Silberschatz] &nbsp; Consider a system running ten I/O-bound
+tasks and one CPU-bound task. Assume that the I/O-bound tasks issue an
+I/O operation once for every millisecond of CPU computing and that
+each I/O operation takes 10 milliseconds to complete. Also assume that
+the context-switching overhead is 0.1 millisecond and that all
+processes are long-running tasks. What is the CPU utilization for a
+round-robin scheduler when:
+
+<p>
+&nbsp; &nbsp; a. The time quantum is 1 millisecond <br>
+&nbsp; &nbsp; b. The time quantum is 10 milliseconds <br>
+
+</p><p>
+</p></li><li> [Silberschatz] &nbsp; Explain the differences in the degree to
+which the following scheduling algorithms discriminate in favor of
+short processes:
+
+<p>
+&nbsp; &nbsp; a. FCFS <br>
+&nbsp; &nbsp; b. RR <br>
+&nbsp; &nbsp; c. Multilevel feedback queues
+
+</p><p>
+</p></li><li>Annabelle, Bertrand, Chloe and Dag are working on their term
+papers in CSE 120, which is a 10,000 word essay on <i>My All-Time
+Favorite Race Conditions</i>. To help them work on their papers, they
+have one dictionary, two copies of Roget's Thesaurus, and two coffee
+cups.
+
+<ul>
+
+<p>
+</p><li>
+Annabelle needs to use the dictionary and a thesaurus
+to write her paper;</li>
+
+<li>
+Bertrand needs a thesaurus and a coffee cup to write
+his paper;</li>
+
+<li>
+Chloe needs a dictionary and a thesaurus to write
+her paper;</li>
+
+<li>
+Dag needs two coffee cups to write his paper (he
+likes to have a cup of regular and a cup of decaf at the same time to keep
+himself in balance).</li>
+</ul>
+
+<p>Consider the following state:
+</p><ul>
+<li>
+Annabelle has a thesaurus and needs the dictionary.</li>
+
+<li>
+Bertrand has a thesaurus and a coffee cup.</li>
+
+<li>
+Chloe has the dictionary and needs a thesaurus.</li>
+
+<li>
+Dag has a coffee cup and needs another coffee cup.</li>
+</ul>
+
+<p>
+&nbsp; &nbsp; a. Is the system deadlocked in this state? Explain using
+a resource allocation graph as a reference.<br>
+
+</p><p>
+&nbsp; &nbsp; b. Is this state reachable if the four people allocated
+and released their resources using the Banker's algorithm? Explain.
+
+
+<!--
+<p>
+<li> Suppose you have an operating system that has only binary
+semaphores.  You wish to use counting semaphores. Show how you can
+implement counting semaphores using binary semaphores.
+
+<p> Hints: You will need two binary semaphores to implement one
+counting semaphore. There is no need to use a queue &mdash;  the queueing on
+the binary semaphores is all you'll need. You should not use busy
+waiting. The wait() operation for the counting semaphore will first
+wait on one of the two binary semaphores, and then on the other. The
+wait on the first semaphore implements the queueing on the counting
+semaphore and the wait on the second semaphore is for mutual
+exclusion.
+-->
+
+<!--
+
+<p>
+<li> Imagine you've implemented Peterson's algorithm on a
+uniprocessor.  The program has two threads, both repeatedly trying to
+enter the critical section. The critical section only increments a
+counter shared by both threads. The value of this counter is displayed
+every second.
+
+<p> If you did this, you would notice the following behavior: for
+awhile - some seconds - the number of critical section entries per
+second will be very high. At some point, though, the number of
+critical section entries per second would suddenly drop to a much
+lower rate - indeed, many thousands of times slower.
+
+<p> (If you wish, give it a try!)
+
+<p> Explain why this happens.
+
+-->
+
+</p></li></ol>
+
+
+<hr>
+<address>
+<a href="mailto:voelker@cs.ucsd.edu">voelker@cs.ucsd.edu</a>
+</address>
+
+</div></body><div></div></html>

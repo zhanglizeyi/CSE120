@@ -1,0 +1,101 @@
+@import url(http://fonts.googleapis.com/css?family=Open+Sans:400italic,400);
+
+body {
+    font-family: "Open Sans", "sans-serif";
+    font-size: .15in;
+    margin-left: .2in;
+    margin-right: .2in;
+    margin-bottom: .2in;
+}
+
+div.labbody {
+    margin: auto;
+    max-width: 800px;
+}
+
+code, tt {
+    margin: 0 2px;
+    padding: 0 5px;
+    white-space: nowrap;
+    border: 1px solid #eaeaea;
+    background-color: #f8f8f8;
+    border-radius: 3px;
+}
+ 
+pre code {
+    margin: 0;
+    padding: 0;
+    white-space: pre;
+    border: none;
+    background: transparent;
+}
+ 
+.highlight pre {
+    background-color: #f8f8f8;
+    border: 1px solid #cccccc;
+    font-size: 13px;
+    line-height: 19px;
+    overflow: auto;
+    padding: 6px 10px;
+    border-radius: 3px;
+}
+ 
+pre {
+    background-color: #f8f8f8;
+    border: 1px solid #cccccc;
+    font-size: 13px;
+    line-height: 19px;
+    overflow: auto;
+    padding: 6px 10px;
+    border-radius: 3px;
+}
+ 
+pre code, pre tt {
+    background-color: transparent;
+    border: none;
+}
+
+h1 { 
+    margin-top: .3in;
+    font-size: .27in; 
+    border-bottom: 1px solid #999; 
+    padding-bottom: .08in;
+    color: #333;
+}
+h2 { 
+    font-size: .24in; 
+    border-bottom: 1px solid #999; 
+    padding-bottom: .08in;
+    color: #333;
+    margin-top: .4in;
+}
+h3 { font-size: .23in; }
+
+div.footer {
+    text-align: right;
+    margin-top: .5in;
+}
+div.footer a {
+    color: #999;
+}
+
+hr {
+    border: 0;
+    border-bottom: 1px #ccc solid;
+    width: 100%;
+}
+
+a { text-decoration: none; color: blue; }
+a:hover { text-decoration: underline; }
+a[name]:hover {text-decoration: inherit; color: inherit; background: inherit}
+
+.out { color: blue; font-weight: bold; }
+.due { color: red; font-weight: bold; }
+
+h2.outline {
+    border: none;
+    color: orange;
+    margin-top: 0;
+}
+
+

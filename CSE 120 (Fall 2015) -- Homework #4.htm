@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<!-- saved from url=(0056)http://cseweb.ucsd.edu/classes/fa15/cse120-a/hw/hw4.html -->
+<html class="gr__cseweb_ucsd_edu"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+<link rel="stylesheet" type="text/css" href="./CSE 120 (Fall 2015) -- Homework #4_files/style.css">
+<title>CSE 120 (Fall 2015) -- Homework #4</title>
+</head>
+
+<body data-gr-c-s-loaded="true">
+<div class="labbody">
+
+<h1>CSE 120: Homework #4</h1>
+<h2 class="outline">Fall 2015</h2>
+
+<p><strong>Out</strong>: <span class="out">Friday November 20</span><br>
+</p><p><strong>Due</strong>: <span class="due">Thursday December 3 at the start of class</span> <br> <i>(No late homeworks starting Saturday December 5)</i><br>
+
+
+</p><ol>
+
+<!-- fragmentation questions...calculate % of disk lost to internal.
+also calculate when using fragments -->
+
+<!-- compare execution time when using hard disk, SSDs, PCM, and RAM
+disk -->
+
+<p>
+</p><li> On a Unix-style file system, how many disk read operations are
+required to read the first block of the file "/usr/include/stdio.h"?
+Assume that the master block is in memory, but nothing else.  Also
+assume that all directories and inodes are one block in size.
+
+<p>
+</p></li><li> Consider a UNIX-style inode with 10 direct pointers, one single-
+indirect pointer, and one double-indirect pointer only. Assume that
+the block size is 4K bytes, and that the size of a pointer is 4
+bytes. How large a file can be indexed using such an inode?
+
+<p>
+</p></li><li>
+Consider a file archival system, like the programs zip or tar. Such
+systems copy files into a backup file and restore files from the
+backup. For example, from the zip documentation:
+
+<blockquote>
+The zip program puts one or more compressed files into a single zip
+archive, along with information about the files (name, path, date,
+time of last modification, protection, and check information to verify
+file integrity).
+</blockquote>
+
+<p> When a file is restored, it is given the same name, time of last
+modification, protection, and so on.  If desired, it can even be put
+into the same directory in which it was originally located.
+
+</p><p> Can zip restore the file into the same inode as well?  Briefly
+explain your answer.
+
+</p></li><li> [Silberschatz] Consider a system that supports 5000
+users. Suppose that you want to allow 4990 of these users to be able
+to access one file.
+
+<ol type="a">
+<li> How would you specify this protection scheme in Unix?
+</li><li> Could you suggest another protection scheme that can be used more
+effectively for this purpose than the scheme provided by Unix?
+</li></ol>
+
+<p>
+</p></li><li> [Silberschatz] How does a file cache help improve performance?
+Why do systems not use much larger caches if they are so useful?
+
+</li></ol>
+
+
+<hr>
+<address>
+<a href="mailto:voelker@cs.ucsd.edu">voelker@cs.ucsd.edu</a>
+</address>
+
+</div>
+
+
+</body><div></div></html>

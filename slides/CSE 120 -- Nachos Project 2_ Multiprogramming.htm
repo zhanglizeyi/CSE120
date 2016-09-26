@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<!-- saved from url=(0064)http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/multi.html -->
+<html class="gr__cseweb_ucsd_edu"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+
+<link rel="stylesheet" type="text/css" href="./CSE 120 -- Nachos Project 2_ Multiprogramming_files/style.css">
+<title>CSE 120 -- Nachos Project 2: Multiprogramming</title>
+</head>
+
+<body data-gr-c-s-loaded="true"> <div class="labbody">
+
+<h1>CSE 120 Nachos Project 2: Multiprogramming</h1>
+<h2 class="outline">Fall 2014</h2>
+
+<p><strike><strong>Due</strong>: <span class="due">Tuesday November 25, 2014 at 11:59pm</span></strike>
+</p><p><strong>Due</strong>: <span class="due">Monday December 1, 2014 at 11:59pm</span>
+
+</p><p>The second phase of Nachos is to support multiprogramming. As in
+the first assignment, we give you some of the code you need and your
+job is to complete the system and enhance it.</p>
+
+<p>Up to now, all the code you have written for Nachos has been part
+of the operating system kernel. In a real operating system the kernel
+not only uses its procedures internally, but also allows user-level
+programs to access some of its routines via system calls. An
+executing user program is a process. In this project you will modify
+Nachos to support multiple processes, using system calls to have
+processes request services from the kernel.</p>
+
+<p> Since your kernel does not trust user programs to execute safely,
+the kernel and the (simulated) hardware will work together to protect
+the system from damage by malicious or buggy user programs. To this
+end, you will implement simple versions of key mechanisms found in
+real operating system kernels: virtual addressing, protected system
+calls and kernel exception handling, and preemptive
+timeslicing. Virtual addressing prevents user processes from accessing
+kernel data structures or the memory of other programs; your kernel
+will use process page tables to safely allow multiple processes to
+reside in memory at the same time. With protected system calls and
+exceptions, all entries into the kernel funnel through a single kernel
+routine, "ExceptionHandler"; you will "bullet-proof" this routine so
+that buggy or malicious user programs cannot cause the kernel to crash
+or behave inappropriately.  Finally, your kernel will use preemptive
+scheduling to share the simulated CPU fairly among the active user
+processes, so that no process can take over the system. All of these
+protection mechanisms require cooperation between the hardware and the
+operating system kernel software. Your implementation will be based on
+"hardware" support in the Nachos MIPS simulator, which resembles a
+real MIPS processor.
+
+</p><p> If all processes are created by other processes, then who creates
+the first user process? The operating system kernel creates this
+process itself as part of its initialization sequence. This is
+bootstrapping. You can "boot" the Nachos kernel by running nachos with
+the -x option (x for "execute"), giving the name of an initial program
+to run as the initial process. The Nachos release implements the -x
+option by calling StartProcess in userprog/progtest.cc to handcraft
+the initial process and execute the initial program within it. The
+initial process may then create other processes, which may create
+other processes...and so on.
+
+</p><p>The first step is to read and understand the part of the system
+written for you. The code that you will have to look at and modify is
+spread over several directories. There are some kernel files in
+"userprog", a few additional machine simulation files in "machine",
+and a stub file system in "filesys". The user programs are in "test",
+and utilities to generate a Nachos loadable executable are in
+"bin". Since Nachos executes MIPS instructions (and there aren't very
+many MIPS workstations left!), we also provide you with a
+cross-compiler.  The cross-compiler runs on Linux and compiles user
+programs into MIPS format.</p>
+
+<p>The code provided can run only a single user-level "C" program at a
+time.  As a test case, there is a trivial user program, "halt".  All
+"halt" does is to turn around and ask the operating system to shut the
+machine down. To run the "halt" program, make and then run Nachos in
+the "userprog" directory:
+
+</p><blockquote><pre>% cd userprog
+% ./nachos -x ../test/halt
+</pre></blockquote>
+
+<p> Trace what happens as the user program gets loaded, runs, and
+invokes a system call.</p>
+
+<p>As with the previous assignment, you may find Narten's <a href="https://www.cs.duke.edu/~chase/nachos-guide/guide/nachos-guide-frames.html">Road Map to Nachos</a> 
+and <a href="https://www.cs.duke.edu/~chase/nachos-guide/guide/nachos.htm#_Toc535602550">Nachos
+System Call Interface</a> helpful. Also, you can change the
+<b>constants</b> in "machine.h" if it helps you design better test
+cases. For example, you can change the amount of "physical memory"
+allocated by Nachos. Note that the code for this part of the project
+is enabled by the USER_PROGRAM compiler macro. </p>
+
+<p> In this project, you will be adding your code to addrspace.cc,
+progtest.cc, and exception.cc in the userprog directory.  You will
+also be creating test programs in the test directory.  Overall, the
+files for this assignment that you might look at include:</p>
+
+<ul>
+  <li><b>progtest.cc</b>
+    -- test routines for running user programs.</li>
+  <li><b>addrspace.h,
+    addrspace.cc</b> -- create an address space in which to run a user program,
+    and load the program from disk.</li>
+  <li><b>syscall.h</b> -- the system call interface: kernel procedures that user programs can
+    invoke.</li>
+  <li><b>exception.cc</b> -- the handler for system calls and other user-level exceptions, such as
+    page faults. In the initial Nachos code, only the "halt" system call is
+    supported.</li>
+  <li><b>bitmap.h,
+    bitmap.cc</b> -- routines for manipulating bitmaps (this might be useful for
+    keeping track of physical page frames)</li>
+  <li><b>filesys.h,
+    openfile.h </b>(found in the filesys directory) -- a stub defining the
+    Nachos file system routines. For this project, the
+    Nachos file system makes direct corresponding calls to the UNIX
+    file system. </li>
+  <li><b>translate.h,
+    translate.cc </b>-- translation table routines.&nbsp; In the initial code,
+    we assume that every virtual address is the same as its physical address —
+    this restricts us to running one user program at a time.&nbsp; You will
+    generalize this to allow multiple user programs to be run concurrently.&nbsp;
+    We will not ask you to implement demand-paged virtual memory support until project
+    3; for now, every page will be in physical memory.</li>
+  <li><b>machine.h,
+    machine.cc </b>-- emulates the part of the machine that executes user
+    programs: main memory, processor registers, etc.</li>
+  <li><b>mipssim.cc</b>-- emulates the integer instruction set of a MIPS R2/3000 processor.</li>
+  <li><b>console.h,
+    console.cc </b>-- emulates a terminal device using UNIX files. A terminal is
+    (i) byte oriented, (ii) incoming bytes can be read and written at the same
+    time, and (iii) bytes arrive asynchronously (as a result of user
+    keystrokes), without being explicitly requested.</li>
+</ul>
+
+
+<p>In this assignment we are giving you a simulated CPU that models a
+real CPU. In fact, the simulated CPU is the same as the real CPU (a
+MIPS chip), but we cannot just run user programs as regular UNIX
+processes because we want complete control over how many instructions
+are executed at a time, how the address spaces work, and how
+interrupts and exceptions (including system calls) are handled.</p>
+
+<p>Our simulator can run normal programs compiled from C -- see the
+Makefile in the "test" subdirectory for an example.  The compiled
+programs must be linked with some special flags, and then converted
+into Nachos format using the program "coff2noff" (which we
+supply). The only caveat is that floating-point operations are not
+supported.</p>
+
+<ol>
+
+<li> [25 pts] Implement system call handling and multiprogramming.  To
+support multiprogramming, you must support some of the system calls
+defined in syscall.h: Exec, and Exit.  You can also implement thread
+fork and yield for extra credit (see below).  Nachos has an
+assembly-language routine, "syscall", to provide a way of invoking a
+system call from a C routine (UNIX has something similar -- try "man
+syscall"). Use the routine "StartProcess" in progtest.cc as a
+reference for implementing the "exec" system call.
+
+<!-- You will also need to implement a detach system call for this
+project.  You can imagine that if a process is forked and is never
+joined, we won't know when to clean up its state.  It is the forking
+thread's responsibility to make the detach system call to ensure that,
+when the forked thread finishes, the OS can clean up all the state if
+the forked thread is not to be joined.  This detach system call can be
+implemented by passing the process ID of the forked thread as the
+argument, which the OS will then use to adjust the forked threads PCB
+appropriately.  To implement this reasonably, only the forking thread
+should be allowed to make a detach system call that affects a forked
+thread. -->
+
+<p> First, you will need basic facilities to load processes into the
+memory of the simulated machine. Spend a few minutes studying the
+AddrSpace class, and look at how the StartProcess procedure uses the
+AddrSpace class methods to create a new process, initialize its memory
+from an executable file, and start the calling thread running user
+code in the new process context. The current code for AddrSpace and
+StartProcess works OK, but it assumes that there is only one
+program/process running at a time (started with StartProcess from main
+via the nachos -x option), and that all of the machine's memory is
+allocated to that process. Your first job is to generalize this code
+to implement the Exec system call for the general case in which
+multiple processes are active simultaneously.
+
+</p><p> Start by implementing a memory manager class so that your kernel
+can conveniently keep track of which physical page frames are free and
+which have been allocated.  Note that the memory manager does not
+return a pointer to a page, it just manages physical page numbers.  To
+implement the memory manager, you can use the BitMap class (bitmap.h)
+to track allocated and free physical page numbers.  It was created
+with this goal in mind.  You are free to implement the memory manager
+as you like, but here is a suggested interface:
+
+</p><blockquote><pre>/* Create a manager to track the allocation of numPages of physical memory.  
+   You will create one by calling the constructor with NumPhysPages as
+   the parameter.  All physical pages start as free, unallocated pages. */
+MemoryManager(int numPages)
+
+/* Allocate a free page, returning its physical page number or -1
+   if there are no free pages available. */
+int AllocPage()
+
+/* Free the physical page and make it available for future allocation. */
+void FreePage(int physPageNum)
+
+/* True if the physical page is allocated, false otherwise. */
+bool PageIsAllocated(int physPageNum) 
+</pre></blockquote>
+
+<p> One last thing about MemoryManager is that it needs to be thread
+safe.  As with other thread-safe classes, create an internal lock and
+have each method of MemoryManager acquire/release that lock.
+
+</p><p> Now modify AddrSpace to allow multiple processes to be resident in
+the machine memory at the same time.  The default AddrSpace
+constructor code assumes that all of the machine memory is free, and
+it loads the new process contiguously starting at page frame 0.  You
+must modify this scheme to use your memory manager to allocate page
+frames for the new process, and load the process code and data into
+those allocated page frames (which are not typically contiguous). For
+now it is acceptable to fail and return an error (0) from Exec if
+there is not enough free total machine memory to load the executable
+file.
+
+</p><p> Also modify AddrSpace to call the memory manager to release the
+pages allocated to a process when the process is destroyed.  Make sure
+your AddrSpace code also releases any frames allocated to the process
+in the case where it discovers that it does not have enough memory to
+load the entire program into the address space of the process.
+
+</p><p> Finally, to cleanly handle these failures, you will need to move
+the AddrSpace loading code out of the constructor and into a new
+AddrSpace method that can return an error.  It is not good programming
+practice to put code that can fail into a class constructor, so we
+need to fix it.  An example would be to create a new
+method <tt>AddrSpace::Initialize(OpenFile *executable)</tt>, and move
+the code from the AddrSpace constructor to Initialize.  Then update
+StartProcess to invoke Initialize on an AddrSpace after it creates
+one.
+
+</p><p> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/addrspace.html">[Tips on getting started]</a>
+
+</p><p>
+</p><ul>
+<li> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/array.c">array.c</a> -- sample program testing loading code and data (note the use of Exit to return the sum value)
+</li></ul>
+
+<p>
+</p></li><li> [25 pts] Next, use these new facilities to implement the Exec and
+Exit system calls as defined in
+the <a href="https://www.cs.duke.edu/~chase/nachos-guide/guide/nachos.htm#_Toc535602550">Nachos
+System Call Interface</a> and in userprog/syscall.h.  To add to the
+general confusion of terms, the Naches Exec() system call both creates
+a new process and loads and runs a new program in that process.  (It
+is similar to CreateProcess on Windows, or combining fork+exec on
+Unix.)
+
+If an executing
+user process requests a system call (by executing a trap
+instruction) the machine will transfer control to your kernel by
+calling ExceptionHandler in exception.cc. Your kernel code must
+extract the system call identifier and the arguments from the machine
+registers, decode them, and call internal procedures that implement
+the system call.  You may impose a reasonable limit on the maximum
+size of a file name.  Also, use of Machine::ReadMem and Machine::WriteMem
+is not forbidden as the comment in machine.h implies.
+
+<p> When an Exec call returns, your kernel should have created a new
+process and started a new thread executing within it to run the
+specified program. At this point, do not concern yourself with setting
+up OpenFileIds.  For now, you will be able to run user programs, but
+they will not be able to read any input or write any output.  For
+Exec, you must copy the filename argument from user memory into kernel
+memory safely, so that a malicious or buggy user process cannot crash
+your kernel or violate security. The filename string address (char*)
+passed into the kernel as an argument is a process virtual address; in
+order for the kernel to access the filename it must locate the
+characters in the kernel address space (i.e., in the machine's
+physical "main memory" array) by examining the page table for the
+process. In particular, your kernel must handle the case where the
+filename string crosses user page boundaries and resides in
+noncontiguous physical memory. You must also detect an illegal string
+address or a string that runs off the end of the user's address space
+without a terminating null character. Your kernel should handle these
+cases by returning an error (SpaceId 0) from the Exec system call.
+
+</p><p> Exec must return a unique process identifier (SpaceId) for each
+process created, and your kernel will need to keep track of active
+processes.  Implement a thread-safe table class to use as the process
+table.  The Table class will store an array of untyped object pointers
+indexed by integers in the range [0...size-1], and support the
+following methods:
+
+</p><blockquote><pre>/* Create a table to hold at most "size" entries. */
+Table(int size) 
+
+/* Allocate a table slot for "object", returning the "index" of the
+   allocated entry; otherwise, return -1 if no free slots are available. */
+int Alloc(void *object)
+
+/* Retrieve the object from table slot at "index", or NULL if that
+   slot has not been allocated. */
+void *Get(int index) 
+
+/* Free the table slot at index. */
+void Release(int index) 
+</pre></blockquote>
+
+<p> To make it thread-safe, simply allocate a lock in the constructor
+and acquire/release the lock in each of the methods.  As with
+MemoryManager, you can declare a global pointer to the process table
+and initialize it in StartProcess (since StartProcess only runs once,
+and runs before any processes start).
+
+</p><p> It will also be convenient to implement process exit as an
+internal kernel procedure called by the Exit system call handler,
+rather than calling the lower-level procedures directly from
+ExceptionHandler. This will make it easier to kill a process from
+inside the kernel (e.g., if the process has some kind of fatal error),
+by calling the internal exit primitive from another kernel procedure
+(e.g., ExceptionHandler) in the target process context. In general,
+this kind of careful internal decomposition will save you from
+reinventing and redebugging wheels, and it is good practice.
+
+</p><p> In your Exit system call hander, print out the status value
+passed as the parameter.  This will aid in debugging and testing.
+
+</p><p>
+</p><ul>
+<li> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/exittest.c">exittest.c</a> -- sample program testing Exit
+</li><li> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/exectest.c">exectest.c</a> -- sample program testing Exec and Exit
+</li></ul>
+
+<p> [10 pts] Write test programs that test multiprogramming: Exec,
+Exit, and your AddrSpace implementation.  You should make sure that
+Exec cleanly handles problem cases where the program string argument
+is invalid for some reason -- bad string address, does not end in a
+null character, and specifies a filename that does not exist.  You
+should also test the boundaries of AddrSpace -- trying load a program
+that doesn't fit into physical memory, being able to load many
+programs one after the other (i.e., AddrSpace releases memory when a
+process goes away so it can be reused again).
+
+</p><p> Note: Once you have Exec working, make sure that you test all of
+your test programs (both for this part and parts below) with the "-rs"
+option as well, e.g.:
+
+</p><blockquote><pre>% ./nachos -rs 29 -x ../test/exectest
+</pre></blockquote>
+
+<p> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/exec.html">[Tips on getting started]</a>
+
+</p><p>
+</p></li><li> <i>(Extra credit)</i> [4 pts] The current version of the "Exec" system call does not
+provide any way for the user program to pass parameters or arguments
+to the newly created address space. UNIX does allow this, for
+instance, to pass in command line arguments to the new address
+space. Implement this feature.
+
+<p> There are two steps to get this done.  First, you need a new
+signature for Exec so that you can give it the arguments to be passed
+to the new process.  Second, you need to figure out how to pass those
+arguments to that process.
+
+</p><p> 1. Change the signature of Exec to be the following:
+
+</p><blockquote><pre>SpaceID Exec(char *name, int argc, char **argv, int willJoin);
+</pre></blockquote>
+
+<p> "name" is the filename as before, "argc" is the number of
+arguments, "argv" is the array of argument strings, and "willJoin"
+determines whether this process will be joined by another.  The
+semantics of argc and argv are exactly like standard C.  The semantics
+of the "willJoin" argument are the same as for Nachos threads --
+non-zero means that a process will eventually Join on the one being
+Exec'ed.  If you do not implement the Join system call, you should
+pass in "0" for this argument.
+
+</p><p> You will need to change the declaration of Exec in syscall.h, and
+you will need to change your test programs to use this new version of
+Exec.  If a program does not pass in arguments to the new process,
+just pass in zero for argc, argv, and willJoin.
+
+</p><p> 2. To pass in the arguments to the created process, you need to do
+two things.  First, you need to copy the arguments into the process'
+address space.  Second, you need to setup the machine so that, when
+the process starts executing, the argc and argv arguments are passed
+into the main() routine of the program.
+
+<!--
+<p> NOTE: When you construct the arguments to the child process,
+include as the first argument (argv[0]) the program name (the "name"
+argument passed as the first argument to Exec).  This follows C
+conventions.
+-->
+
+</p><p> Before you can copy in the arguments, you need to create some
+space for them.  To do this, grow the process' virtual address space
+by some amount (e.g., just like the address space is grown to
+accomodate the user stack).  You decide how much (and document this in
+your writeup), and make sure that you check that the arguments do not
+overflow this region.  Don't make it too large, though, or you will
+consume too much physical memory.  Then copy the arguments into that
+region of the virtual address space (this is the opposite of reading
+system call arguments out of the virtual address space).
+
+</p><p> To setup the machine so that the process is started with the
+arguments, you can assume that the arguments to main use the same set
+of registers as the arguments passed in from system calls (i.e., same
+calling convention).  The comments at the top of ExceptionHandler
+describe which registers to use.
+
+</p><p> NOTE: To test this, you will need to create a test program that
+has arguments in its main routine:
+
+</p><blockquote><pre>int
+main(int argc, char *argv[])
+{
+  // e.g., check to make sure that the arguments are valid...
+}
+</pre></blockquote>
+
+<p> You do not need to support command line arguments to the first
+process that is started when nachos starts, just processes that are
+Exec()ed.
+
+</p><p>
+</p></li><li> [20 pts] Implement the "read" and "write" system calls for
+console reads and writes (not for file reads and writes).  See
+the <a href="https://www.cs.duke.edu/~chase/nachos-guide/guide/nachos.htm#_Toc535602523">Files
+and I/O</a> section of the Nachos System Call Interface document for
+the specification.  To support the system calls that access the
+console device, implement a "SynchConsole" class that provides the
+abstraction of synchronous access to the console (i.e., a read on the
+SynchConsole blocks the thread until a character is available).
+"progtest.cc" has the beginnings of a SynchConsole implementation.
+Hint: Peek into the filesys/synchdisk.{cc,h} files to use the
+SynchDisk class as a further example.
+
+<p> If the arguments to Read and Write are invalid (e.g., invalid
+buffer address), have the system calls return -1 as an error.
+
+</p><p>
+Note that once your code creates a Console, Nachos will no longer exit
+when there are no more threads to run.  The Console registers an
+interrupt handler with Nachos, and Nachos will wait indefinitely for
+future keyboard interrupts.  This behavior is expected and is not a
+bug in your code.
+
+</p><p>
+An example program that uses Read and Write that is slightly less
+complicated than shell is <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/echo.c">echo</a>.
+
+</p><p>
+</p></li><li> [10 pts] Implement the Nachos kernel code to handle user program
+exceptions that are not system calls. The machine (or simulator)
+raises an exception whenever it is unable to execute the next user
+instruction, e.g., because of an attempt to reference an illegal
+address, a privileged or illegal instruction or operand, or an
+arithmetic underflow or overflow condition. The kernel's role is to
+handle these exceptions in a reasonable way, i.e., by printing an
+error message and killing the process rather than crashing the whole
+system.  (Note: an ASSERT that crashes Nachos is a reasonable response
+to a bug within your Nachos kernel as in project 1, but you do not
+want to use ASSERT when a user program causes an exception.)
+
+<p> This part is relatively straightforward to do by adding code to
+ExceptionHandler in exception.cc to check for various exception types
+other than SyscallException.  All exception types are defined in the
+machine/machine.h header file.
+
+</p><p> Now, create user-level test programs to verify that your exception
+handling code works properly, both for a single process and for
+Exec'ed processes.  You only need to create test programs for any two
+exceptions, e.g., AddressErrorException (initialize a pointer to a
+bogus value and try to dereference it), IllegalInstrException
+(initialize a function pointer to a bogus value and invoke it), etc.
+
+</p><p>
+</p></li><li> <i>(Extra Credit)</i> [4 pts] Implement the "join" system call.  Join
+takes one argument, the SpaceId of the process that the caller wants
+to wait for.  The process to be Joined must have been Exec'ed with its
+willJoin argument set to non-zero.  Join returns the process status
+(Exit) code of the process that was Joined.  Return -65535 from Join
+to signify an error (e.g., the SpaceId passed to the Join system call
+is invalid).  Demonstrate that your implementation of Join works
+correctly with test programs.
+
+<p>
+</p></li><li> <i>(Extra Credit)</i> [4 pts] Implement interprocess communication using
+pipes (requires support for "read" and "write" system calls).  This
+will redirect the output of one process to the input of another.
+Since you are not required to implement file reads and writes, this
+will be the only way to pass information to a process, aside from
+command line arguments.  An example of a unix pipe would be "program1
+| program2". In this example, program1 would normally output text to
+the standard output, but the pipe will redirect this output to the
+input of program2.  program2 would normally take its input from a
+file.  This problem will require some imagination since files do not
+exist, but should not be too difficult to implement.
+
+<p> When implementing pipes, implement them according to the
+specification in the Duke Nachos pages: <a href="https://www.cs.duke.edu/~chase/nachos-guide/guide/nachos.htm#_Toc535602545">Pipes</a>.
+The only twist is that we are going to have to overload the "willJoin"
+parameter to Exec to pass in values for "pipectrl".  Change your Exec
+implementation to interpret willJoin as follows:
+
+</p><p>
+&nbsp; willJoin &amp; 0x1: child will be Joined <br>
+&nbsp; willJoin &amp; 0x2: bind stdout to a pipe <br>
+&nbsp; willJoin &amp; 0x4: bind stdin to a pipe <br>
+
+</p><p> In other words, for a child that will not be Joined willJoin=0x2
+corresponds to pipectrl=1, willJoin=0x6 corresponds to pipectrl=2, and
+willJoin=0x4 corresponds to pipectrl=3.
+
+</p><p>
+</p><ul>
+<li> <a href="http://cseweb.ucsd.edu/classes/fa14/cse120-b/projects/pipetest.c">pipetest.c</a> -- sample program testing pipes
+</li></ul>
+
+<p> Note: You do not need to support pipes for the first process that
+starts up with Nachos.
+
+</p><p>
+</p></li><li> (Extra Credit) [4 pts] Implement multithreaded user
+programs. Implement the thread fork() and yield() system calls to
+allow a user program to fork a thread to call a routine in the same
+address space, and then ping-pong between threads.&nbsp; (Hint: you
+will need to change the kernel to allocate memory in the user address
+space for each thread stack.)  Have Exit terminate the entire process.
+
+<!-- have exit only terminate the calling thread...otherwise it is a
+mess to try and clean up all -->
+
+</li></ol>
+
+<h3><a name="submit"></a>Submitting The Project</h3>
+
+<p> As with project 1, we would like a short README document describing
+what changes you made, how well they worked, how you tested your
+changes, and how each group member contributed to the project.  Please
+include this writeup in your <b>userprog</b> directory.  
+
+<!-- As with project 1, use <a href="threads.html#submit">CVS to turn
+in your project</a>. -->
+
+</p><p> Remove compiled files from your code directory, create a tar file
+of the code directory, and use turnin to submit.
+
+</p><blockquote><pre>$ cd nachos/code
+$ make clean
+$ cd ..
+$ tar cvzf project2.tgz code
+$ turnin project2.tgz
+</pre></blockquote>
+
+<!-- <p> For project 2, you have two options for turning it in.  You can
+use <a href="threads.html#submit">CVS as you did for project 1</a>, or
+you can email us a gzipped tar file.  If you are going to do the
+latter, then follow these explicit instructions step by step (say you
+are group 57):
+
+<blockquote><pre>
+% cd nachos-3.4/code
+% gmake clean
+% cd ..
+% tar cvf group57.tar code
+% gzip group57.tar
+% [mail group57.tar.gz to voelker@cs and jlrapp@cs using your favorite method of email attachments]
+</pre></blockquote>
+
+<p> Look on the <a href="groups.html">project groups list</a> if you do
+not remember your group number.  -->
+
+
+<hr>
+<address>
+<a href="mailto:voelker@cs.ucsd.edu">voelker@cs.ucsd.edu</a>
+</address>
+
+</div></body><div></div></html>
