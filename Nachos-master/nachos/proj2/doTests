@@ -1,7 +1,0 @@
-cd ../test
-make
-cd ../proj2
-make clean
-make clean
-make
-
