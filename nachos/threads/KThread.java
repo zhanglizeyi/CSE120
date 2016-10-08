@@ -355,7 +355,7 @@ public class KThread {
 
 		currentThread = this;
 
-		tcb.contextSwitch();
+		tcb.contextSwitch(); //when one thread call, stop executing and another start to run
 
 		currentThread.restoreState();
 	}

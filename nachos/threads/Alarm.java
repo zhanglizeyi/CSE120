@@ -44,10 +44,21 @@ public class Alarm {
 	 * 
 	 * @see nachos.machine.Timer#getTime()
 	 */
+
+	//set up a linklist for queue
+	linklist<KThread> pq = new linklist<KThread>();
+
 	public void waitUntil(long x) {
 		// for now, cheat just to get something working (busy waiting is bad)
-		long wakeTime = Machine.timer().getTime() + x;
-		while (wakeTime > Machine.timer().getTime())
-			KThread.yield();
+		// long wakeTime = Machine.timer().getTime() + x;
+		// while (wakeTime > Machine.timer().getTime())
+		// 	KThread.yield();
+
+		KThread.currentThread.wakeTime = KThread.timer().getTime() + x;
+		boolean checkStatus = Machine.interrupt.disable();
+
+		pq.add(KThread.currentThread());
+		KThread.currentThread().sleep();
+		Machine.interrupt().restore(pq);
 	}
 }
