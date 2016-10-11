@@ -2,6 +2,13 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+//import java lib 
+import java.util.*;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Iterator;
+import java.util.HashMap;
+
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
  * until a certain time.
@@ -22,6 +29,10 @@ public class Alarm {
 		});
 	}
 
+	/*
+		create a Hashmap to store threads
+	*/
+	Map<KThread, Long> mThread = new HashMap<KThread, Long>();
 	/**
 	 * The timer interrupt handler. This is called by the machine's timer
 	 * periodically (approximately every 500 clock ticks). Causes the current
@@ -30,6 +41,18 @@ public class Alarm {
 	 */
 	public void timerInterrupt() {
 		KThread.currentThread().yield();
+
+		Iterator<Entry<KThread, Long>> it = mThread.entrySet().iterator();
+		while(it.hasNext())
+		{
+			Map.Entry<KThread, Long> entry = (Map.Entry<KThread, Long>) it.next();
+			System.out.println(entry.getKey() + " = " + entry.getValue());
+			if(entry.getValue() <= Machine.timer().getTime())
+			{
+				entry.getKey().ready();
+				it.remove();
+			}
+		}
 	}
 
 	/**
@@ -44,21 +67,29 @@ public class Alarm {
 	 * 
 	 * @see nachos.machine.Timer#getTime()
 	 */
-
-	//set up a linklist for queue
-	linklist<KThread> pq = new linklist<KThread>();
-
 	public void waitUntil(long x) {
 		// for now, cheat just to get something working (busy waiting is bad)
-		// long wakeTime = Machine.timer().getTime() + x;
-		// while (wakeTime > Machine.timer().getTime())
-		// 	KThread.yield();
+		//long wakeTime = Machine.timer().getTime() + x;
+		//while (wakeTime > Machine.timer().getTime())
+			//KThread.yield();
 
-		KThread.currentThread.wakeTime = KThread.timer().getTime() + x;
-		boolean checkStatus = Machine.interrupt.disable();
+		/*Modification proj_1*/
+		if( x > 0 )
+		{
+			long wakeTime = Machine.timer().getTime() + x;
+			mThread.put(KThread.currentThread(), wakeTime);
 
-		pq.add(KThread.currentThread());
-		KThread.currentThread().sleep();
-		Machine.interrupt().restore(pq);
+			boolean checkStatus = Machine.interrupt().disable();
+			KThread.currentThread().sleep();
+			Machine.interrupt().restore(checkStatus);
+		}
 	}
+
+	//test part not sure 
+	
 }
+
+
+
+
+

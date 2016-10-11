@@ -283,8 +283,29 @@ public class KThread {
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 
-		Lib.assertTrue(this != currentThread);
+		Lib.assertTrue(this != currentThread); //thread cannot join itself
 
+		/*
+			B is the parent joins with thread A child, when B calls A
+			1. A finished then B returns immediately and run 
+			2. A is not finished then B waits inside of join until A fnishes
+				A finishs, resumes B
+			3. if B calls A, then there has no one can Call A again. 
+		*/
+
+		//disable current thread
+		boolean intStatus = Machine.interrupt().disable();
+
+		//check if the thread A finished
+		if( this.status == statusFinished )
+		{
+			Machine.interrupt().restore(intStatus);
+			return;
+		}
+		thread_Suspend = currentThread;
+		thread_Suspend.sleep();
+
+		Machine.interrupt().restore(intStatus);
 	}
 
 	/**
@@ -410,12 +431,12 @@ public class KThread {
 	/**
 	 * Tests whether this module is working.
 	 */
-	public static void selfTest() {
-		Lib.debug(dbgThread, "Enter KThread.selfTest");
+	// public static void selfTest() {
+	// 	Lib.debug(dbgThread, "Enter KThread.selfTest");
 
-		new KThread(new PingTest(1)).setName("forked thread").fork();
-		new PingTest(0).run();
-	}
+	// 	new KThread(new PingTest(1)).setName("forked thread").fork();
+	// 	new PingTest(0).run();
+	// }
 
 	private static final char dbgThread = 't';
 
@@ -465,4 +486,25 @@ public class KThread {
 	private static KThread toBeDestroyed = null;
 
 	private static KThread idleThread = null;
+
+	//add thread hold 
+	private KThread thread_Suspend = null;
+
+
+	public static void selfTest(){
+	    KThread t1 = new KThread( new Runnable () {
+	        public void run() {       
+	                System.out.println("Thread 1 is running");
+	  
+	        }
+	    });
+	   
+	    t1.setName("Thread 1");
+	    t1.fork();
+	    t1.join();
+	    
+	    System.out.println("Reached part of code after t1.join(). t1 should be finshed at this point.");
+	    System.out.println("t1 finished? " + (t1.status == statusFinished));
+	    Lib.assertTrue((t1.status == statusFinished), " Expected t1 to be finished.");    
+	}
 }
