@@ -13,7 +13,26 @@ public class Communicator {
 	/**
 	 * Allocate a new communicator.
 	 */
-	public Communicator() {
+
+	/*genernal purpose
+		1. thread call speak(), then only thread block inside of speak(), then a different 
+			call listen()
+		2. thread call listen(), then only thread block inside of speak(), then a different 
+			call speak()
+		3. speak() can not return speak() itself, until call the listen() before call speak()
+		4. mutiple threads call speak(), then theards will also block inside of the speak()
+	*/
+
+	private int message;
+	private Lock lock1;
+	private Lock lock2;
+	private Condition condition1;
+	private Condition condition2;
+	private boolean hasSpeaker;
+	private boolean hasWritter;
+	 
+
+	public blic Communicator() {
 	}
 
 	/**

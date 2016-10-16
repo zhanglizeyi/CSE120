@@ -2,6 +2,8 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+//import util Likedlist
+import java.util.*; 
 /**
  * A <tt>Semaphore</tt> is a synchronization primitive with an unsigned value. A
  * semaphore has only two operations:
