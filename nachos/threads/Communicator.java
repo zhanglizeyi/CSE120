@@ -21,18 +21,41 @@ public class Communicator {
 			call speak()
 		3. speak() can not return speak() itself, until call the listen() before call speak()
 		4. mutiple threads call speak(), then theards will also block inside of the speak()
+		
+		speaker() -> 1. lock.acquire()
+					 2. check buffer is full  -> write.sleep()
+					 3. (write into buffer)
+					 4. write.wake()
+					 5. lock release()
+		
+		writter() -> 1. lock.acquire()
+					 2. check buffer == null -> speaker.sleep()
+					 3. (read from buffer)
+					 4. speaker.wake()
+					 5. lock.release()
 	*/
 
+
+
 	private int message;
-	private Lock lock1;
-	private Lock lock2;
-	private Condition condition1;
-	private Condition condition2;
-	private boolean hasSpeaker;
-	private boolean hasWritter;
-	 
+	private Lock lock;
+
+	private Condition2 speakCond;
+	private Condition2 listenCond;
+	private Condition2 returnCond;
+	
 
 	public blic Communicator() {
+	
+		message = null;
+
+		lock = new Lock();
+
+		speakCond = new Condition2(lock);
+
+		listenCond = new Condition2(lock);
+
+		returnCond = new Condition2(lock);
 	}
 
 	/**
@@ -46,6 +69,16 @@ public class Communicator {
 	 * @param word the integer to transfer.
 	 */
 	public void speak(int word) {
+
+		lock.acquire();
+
+		while( message != null)
+			speakCond.sleep();
+
+		message = word;
+		listenCond.wake();
+		returnCond.sleep();
+		lock.release();
 	}
 
 	/**
@@ -55,6 +88,20 @@ public class Communicator {
 	 * @return the integer transferred.
 	 */
 	public int listen() {
-		return 0;
+
+		lock.acquire(); 
+
+		while( message == null )
+			listenCond.sleep();
+
+		//clear buffer 
+		int retWord = message;
+		message = null;
+
+		speakCond.wake();
+
+		lock.release();
+
+		return retWord;
 	}
 }

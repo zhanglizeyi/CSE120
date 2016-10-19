@@ -46,7 +46,7 @@ public class Alarm {
 		while(it.hasNext())
 		{
 			Map.Entry<KThread, Long> entry = (Map.Entry<KThread, Long>) it.next();
-			System.out.println(entry.getKey() + " = " + entry.getValue());
+			//System.out.println(entry.getKey() + " == " + entry.getValue());
 			if(entry.getValue() <= Machine.timer().getTime())
 			{
 				entry.getKey().ready();
@@ -108,6 +108,7 @@ public class Alarm {
 	// Invoke your other test methods here ...
     }
     //====================================================================
+	
 	
 }
 
