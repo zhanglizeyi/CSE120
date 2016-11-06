@@ -7,6 +7,8 @@ import nachos.vm.*;
 
 import java.io.EOFException;
 
+
+
 /**
  * Encapsulates the state of a user process that is not contained in its user
  * thread (or threads). This includes its address translation state, a file
@@ -28,6 +30,17 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+
+		//initialize counterSize
+		counterSize = 16;
+
+		//initialize fileTable
+		fileTable = new OpenFile[counterSize];
+
+		//stdin -- keyboard
+		fileTable[0] = UserKernel.console.openForReading();
+		//stdout -- screen
+		fileTable[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -346,6 +359,76 @@ public class UserProcess {
 		processor.writeRegister(Processor.regA1, argv);
 	}
 
+	/*
+	 *	Handle the Create() system call
+	 *	Create a file and return a file descriptor
+	 */
+	private int handleCreate(int file){
+		
+		String theFile = UserProcess.readVirtualMemoryString(file, 256);
+		//check if file exsit
+		if (theFile == null) return -1;
+
+		//open 
+		OpenFile fdFile = ThreadedKernel.fileSystem.open(theFile, true);
+		//doesn't need to check if fdFile can not open file name
+		for(int i=2; i<fileTable.length; i++)
+		{	
+			if(fileTable[i] == null)
+			{
+				fileTable[i] = theFile;
+				return i;
+				//return descrp 
+			}
+		}
+		if(fileTable > 16){
+			//should generate new length of fileTable
+		}
+
+		return -1;
+	}
+
+	private int handleOpen(int file){
+		
+		String theFile = UserProcess.readVirtualMemoryString(add, 256);
+		//check if file exsit
+		if(theFile == null) return -1;
+
+		OpenFile fdFile = ThreadedKernel.fileSystem.open(theFile, true);
+
+		for(int i=2; i<fileTable.length; i++)
+		{
+			if(fileTable[i] == null)
+			{
+				fileTable[i] = fdFile;
+				return i;
+			}
+		}
+
+		//check length
+		if(fileTable.length > 16){
+			//create new
+		}
+
+		return 0;
+	}
+
+	private int handleRead(){
+		return 0;
+	}
+
+	private int handleWrite(){
+		return 0;
+	}
+
+	private int handleClose(){
+		return 0;
+	}
+
+	private int handleUnlink(){
+		return 0;
+	}
+
 	/**
 	 * Handle the halt() system call.
 	 */
@@ -366,10 +449,16 @@ public class UserProcess {
 		return 0;
 	}
 
-	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
-			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
-			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
-			syscallUnlink = 9;
+	private static final int syscallHalt 	= 0, 
+							 syscallExit 	= 1,  
+							 syscallExec 	= 2,
+							 syscallJoin 	= 3, 
+							 syscallCreate 	= 	4, 
+							 syscallOpen 	= 	5,
+							 syscallRead 	= 	6, 
+							 syscallWrite 	= 	7, 
+							 syscallClose 	= 	8,
+							 syscallUnlink 	= 	9;
 
 	/**
 	 * Handle a syscall exception. Called by <tt>handleException()</tt>. The
@@ -432,12 +521,19 @@ public class UserProcess {
 	 * @param a3 the fourth syscall argument.
 	 * @return the value to be returned to the user.
 	 */
+
+	/*
+		System call each pass in will perduce every functionality
+
+	*/
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 		switch (syscall) {
 		case syscallHalt:
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
+
+		//adding pertential exsit 
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
@@ -493,4 +589,11 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+
+	//private Array[] descriptorTable;
+
+	//FD table is an array of type OpenFile associated with every process
+	private OpenFile[] fileTable; 
+
+	private static int fileSize;
 }
