@@ -871,6 +871,7 @@ public class UserProcess {
 		int leftToRead = count;
 		int totalRead = 0;
 		int readByte = 0;
+		//page 1024
 		while (leftToRead > pageSize)
 		{
 			readByte = theFile.read(buff, 0, pageSize);
@@ -943,10 +944,7 @@ public class UserProcess {
 			Lib.debug(dbgProcess, "\thandleRead: Trying to write to a file that does not exist");
 			return -1;
 		}
-		
-		
-		
-		
+			
 		// TODO: Only write up to a pages amount and do multiple writes if need be
 		byte[] buff = new byte[pageSize];
 		int leftToWrite = count;

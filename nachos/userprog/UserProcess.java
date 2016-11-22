@@ -359,10 +359,15 @@ public class UserProcess {
 		processor.writeRegister(Processor.regA1, argv);
 	}
 
-	/*
-	 *	Handle the Create() system call
-	 *	Create a file and return a file descriptor
-	 */
+/**
+ * Attempt to open the named disk file, creating it if it does not exist,
+ * and return a file descriptor that can be used to access the file.
+ *
+ * Note that creat() can only be used to create files on disk; creat() will
+ * never return a file descriptor referring to a stream.
+ *
+ * Returns the new file descriptor, or -1 if an error occurred.
+ */
 	private int handleCreate(int file){
 		
 		String theFile = UserProcess.readVirtualMemoryString(file, 256);
@@ -387,7 +392,14 @@ public class UserProcess {
 
 		return -1;
 	}
-
+/**
+ * Attempt to open the named file and return a file descriptor.
+ *
+ * Note that open() can only be used to open files on disk; open() will never
+ * return a file descriptor referring to a stream.
+ *
+ * Returns the new file descriptor, or -1 if an error occurred.
+ */
 	private int handleOpen(int file){
 		
 		String theFile = UserProcess.readVirtualMemoryString(add, 256);
@@ -412,21 +424,124 @@ public class UserProcess {
 
 		return 0;
 	}
-
+/**
+ * Attempt to read up to count bytes into buffer from the file or stream
+ * referred to by fileDescriptor.
+ *
+ * On success, the number of bytes read is returned. If the file descriptor
+ * refers to a file on disk, the file position is advanced by this number.
+ *
+ * It is not necessarily an error if this number is smaller than the number of
+ * bytes requested. If the file descriptor refers to a file on disk, this
+ * indicates that the end of the file has been reached. If the file descriptor
+ * refers to a stream, this indicates that the fewer bytes are actually
+ * available right now than were requested, but more bytes may become available
+ * in the future. Note that read() never waits for a stream to have more data;
+ * it always returns as much as possible immediately.
+ *
+ * On error, -1 is returned, and the new file position is undefined. This can
+ * happen if fileDescriptor is invalid, if part of the buffer is read-only or
+ * invalid, or if a network stream has been terminated by the remote host and
+ * no more data is available.
+ */
 	private int handleRead(){
 		return 0;
 	}
 
+/**
+ * Attempt to write up to count bytes from buffer to the file or stream
+ * referred to by fileDescriptor. write() can return before the bytes are
+ * actually flushed to the file or stream. A write to a stream can block,
+ * however, if kernel queues are temporarily full.
+ *
+ * On success, the number of bytes written is returned (zero indicates nothing
+ * was written), and the file position is advanced by this number. It IS an
+ * error if this number is smaller than the number of bytes requested. For
+ * disk files, this indicates that the disk is full. For streams, this
+ * indicates the stream was terminated by the remote host before all the data
+ * was transferred.
+ *
+ * On error, -1 is returned, and the new file position is undefined. This can
+ * happen if fileDescriptor is invalid, if part of the buffer is invalid, or
+ * if a network stream has already been terminated by the remote host.
+ */
 	private int handleWrite(){
 		return 0;
 	}
 
-	private int handleClose(){
-		return 0;
+/**
+ * Close a file descriptor, so that it no longer refers to any file or stream
+ * and may be reused.
+ *
+ * If the file descriptor refers to a file, all data written to it by write()
+ * will be flushed to disk before close() returns.
+ * If the file descriptor refers to a stream, all data written to it by write()
+ * will eventually be flushed (unless the stream is terminated remotely), but
+ * not necessarily before close() returns.
+ *
+ * The resources associated with the file descriptor are released. If the
+ * descriptor is the last reference to a disk file which has been removed using
+ * unlink, the file is deleted (this detail is handled by the file system
+ * implementation).
+ *
+ * Returns 0 on success, or -1 if an error occurred.
+ */
+	private int handleClose(int file){
+		//do we need to check the length?
+		if(file < 0) return -1; //one processor can handle more
+		if(fileTable[file] != null){
+			fileTable[file].close();
+			fileTable[file] = null;
+			return 0;
+		}
+		return -1;
 	}
 
-	private int handleUnlink(){
-		return 0;
+/**
+ * Delete a file from the file system. If no processes have "the file" open, the
+ * file is deleted immediately and the space it was using is made available for
+ * reuse.
+ *
+ * If any processes still have the file open, the file will remain in existence
+ * until the last file descriptor referring to it is closed. However, creat()
+ * and open() will not be able to return new file descriptors for the file
+ * until it is deleted.
+ *
+ * Returns 0 on success, or -1 if an error occurred.
+ */
+	private int handleUnlink(int file){
+			
+		//check if file is not open, delete immediately and set null for reuse.
+		//call close()
+		if(file < 0) return -1;
+		String name = readVirtualMemoryString(file, 256);
+		if(name == null) return -1;
+
+		int ret = findDesFile(name);
+
+		if(ret > 0){
+			//file still open
+			//close first and delete
+			handleClose(ret);
+			return 0;
+		}
+
+		handleClose(ret);
+		//if file still open, until the last file is closed. 
+		//file can not be return at this time.
+		return -1;
+	}
+
+	//private method for unlink
+	private int findDesFile(String fileName){
+		
+		for(int i=0; i<fileTable.length; i++)
+		{
+			if(fileTable[i].equals(fileName))
+				return i;
+				//return correct des from our table
+		}
+		return -1;
 	}
 
 	/**

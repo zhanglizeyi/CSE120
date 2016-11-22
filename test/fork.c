@@ -20,8 +20,10 @@ int main(int argc, char * argv[])
 {
 	printf("===============hello world (pid: %d)===============\n", (int) getpid());
 
-	int rc = fork();
+	
 	//int rk = frok();
+	for(int i=0;i<3;i++){
+			int rc = fork();
 	if(rc < 0)
 	{
 		fprintf(stderr, "fork failed\n" );
@@ -33,9 +35,10 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		int wc = wait(NULL);
-		printf("hello, I am parent of %d (wc:%d) (PID:%d)\n", rc, wc, (int) getpid());
+		//int wc = wait(NULL);
+		printf("hello, I am parent of %d (PID:%d)\n", rc, (int) getpid());
 		
+	}
 	}
 
 	return 0;

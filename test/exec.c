@@ -4,6 +4,13 @@
 #include <string.h>
 #include <sys/wait.h>
 
+/*
+	exec.c 
+	It loads code from that executable and overwrites its current code 
+	segment with it, the heap and stack and other parts of the memory 
+	space of the program are re-initialized. 
+*/
+
 int main(int argc, char *argv[]){
 
 	printf("===============hello world (pid: %d)===============\n", (int) getpid());
